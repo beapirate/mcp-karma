@@ -118,14 +118,29 @@ def labels_list_to_dict(labels: list) -> dict:
 
 
 def resolve_severity(
-    group_labels_dict: dict, alert_labels_dict: dict, default: str = "none"
+    group_labels_dict: dict,
+    alert_labels_dict: dict,
+    shared_labels_dict: dict | None = None,
+    default: str = "none",
 ) -> str:
-    """Resolve severity by checking group labels first, then alert labels.
+    """Resolve severity by checking group labels, shared labels, then alert labels.
 
-    Severity can appear at either the group or alert level depending on
-    how Karma groups alerts. This helper ensures we always check both.
+    Karma stores labels in three locations:
+    - group.labels: labels used for grouping (e.g. alertname)
+    - group.shared.labels: labels common to all alerts, deduplicated from
+      individual alerts by Karma
+    - alert.labels: per-alert labels unique to each alert instance
+
+    Severity is typically deduplicated into shared.labels when it is the same
+    across all alerts in a group.
     """
-    severity = group_labels_dict.get("severity") or alert_labels_dict.get("severity")
+    if shared_labels_dict is None:
+        shared_labels_dict = {}
+    severity = (
+        group_labels_dict.get("severity")
+        or shared_labels_dict.get("severity")
+        or alert_labels_dict.get("severity")
+    )
     return severity if severity else default
 
 
@@ -133,18 +148,24 @@ def extract_alert_metadata(group, alert):
     """Extract common alert metadata (alertname, severity, namespace, cluster)"""
     group_labels = group.get("labels", [])
     alert_labels = alert.get("labels", [])
+    shared_labels = group.get("shared", {}).get("labels", [])
 
     group_labels_dict = labels_list_to_dict(group_labels)
     alert_labels_dict = labels_list_to_dict(alert_labels)
+    shared_labels_dict = labels_list_to_dict(shared_labels)
 
     alertname = group_labels_dict.get(
         "alertname", extract_label_value(group_labels, "alertname", "Unknown")
     )
 
-    severity = resolve_severity(group_labels_dict, alert_labels_dict)
+    severity = resolve_severity(
+        group_labels_dict, alert_labels_dict, shared_labels_dict
+    )
 
-    namespace = alert_labels_dict.get(
-        "namespace", group_labels_dict.get("namespace", "N/A")
+    namespace = (
+        alert_labels_dict.get("namespace")
+        or shared_labels_dict.get("namespace")
+        or group_labels_dict.get("namespace", "N/A")
     )
 
     # Extract cluster from alertmanager info
@@ -548,11 +569,10 @@ async def list_active_alerts() -> str:
                 for grid in grids:
                     for group in grid.get("alertGroups", []):
                         # Get group labels (contains alertname)
-                        group_labels_dict = {}
-                        for label in group.get("labels", []):
-                            group_labels_dict[label.get("name", "")] = label.get(
-                                "value", ""
-                            )
+                        group_labels_dict = labels_list_to_dict(group.get("labels", []))
+                        shared_labels_dict = labels_list_to_dict(
+                            group.get("shared", {}).get("labels", [])
+                        )
 
                         alertname = group_labels_dict.get("alertname", "unknown")
 
@@ -562,18 +582,18 @@ async def list_active_alerts() -> str:
                             # Only include active alerts (not suppressed)
                             if alert_state.lower() == "active":
                                 # Convert alert labels to dict
-                                alert_labels_dict = {}
-                                for label in alert.get("labels", []):
-                                    alert_labels_dict[label.get("name", "")] = (
-                                        label.get("value", "")
-                                    )
+                                alert_labels_dict = labels_list_to_dict(
+                                    alert.get("labels", [])
+                                )
 
                                 active_alerts.append(
                                     {
                                         "name": alertname,
                                         "state": alert_state,
                                         "severity": resolve_severity(
-                                            group_labels_dict, alert_labels_dict
+                                            group_labels_dict,
+                                            alert_labels_dict,
+                                            shared_labels_dict,
                                         ),
                                         "namespace": alert_labels_dict.get(
                                             "namespace", "N/A"
@@ -642,11 +662,10 @@ async def list_suppressed_alerts() -> str:
                 for grid in grids:
                     for group in grid.get("alertGroups", []):
                         # Get group labels (contains alertname)
-                        group_labels_dict = {}
-                        for label in group.get("labels", []):
-                            group_labels_dict[label.get("name", "")] = label.get(
-                                "value", ""
-                            )
+                        group_labels_dict = labels_list_to_dict(group.get("labels", []))
+                        shared_labels_dict = labels_list_to_dict(
+                            group.get("shared", {}).get("labels", [])
+                        )
 
                         alertname = group_labels_dict.get("alertname", "unknown")
 
@@ -656,18 +675,18 @@ async def list_suppressed_alerts() -> str:
                             # Only include suppressed alerts
                             if alert_state.lower() == "suppressed":
                                 # Convert alert labels to dict
-                                alert_labels_dict = {}
-                                for label in alert.get("labels", []):
-                                    alert_labels_dict[label.get("name", "")] = (
-                                        label.get("value", "")
-                                    )
+                                alert_labels_dict = labels_list_to_dict(
+                                    alert.get("labels", [])
+                                )
 
                                 suppressed_alerts.append(
                                     {
                                         "name": alertname,
                                         "state": alert_state,
                                         "severity": resolve_severity(
-                                            group_labels_dict, alert_labels_dict
+                                            group_labels_dict,
+                                            alert_labels_dict,
+                                            shared_labels_dict,
                                         ),
                                         "namespace": alert_labels_dict.get(
                                             "namespace", "N/A"
@@ -760,11 +779,10 @@ async def get_alert_details_multi_cluster(
                 for grid in grids:
                     for group in grid.get("alertGroups", []):
                         # Get group labels (contains alertname)
-                        group_labels_dict = {}
-                        for label in group.get("labels", []):
-                            group_labels_dict[label.get("name", "")] = label.get(
-                                "value", ""
-                            )
+                        group_labels_dict = labels_list_to_dict(group.get("labels", []))
+                        shared_labels_dict = labels_list_to_dict(
+                            group.get("shared", {}).get("labels", [])
+                        )
 
                         # Check if this group matches the alert name
                         if (
@@ -773,11 +791,9 @@ async def get_alert_details_multi_cluster(
                         ):
                             for alert in group.get("alerts", []):
                                 # Get alert labels
-                                alert_labels_dict = {}
-                                for label in alert.get("labels", []):
-                                    alert_labels_dict[label.get("name", "")] = (
-                                        label.get("value", "")
-                                    )
+                                alert_labels_dict = labels_list_to_dict(
+                                    alert.get("labels", [])
+                                )
 
                                 # Get cluster information
                                 alertmanagers = alert.get("alertmanager", [])
@@ -820,7 +836,9 @@ async def get_alert_details_multi_cluster(
                                             "cluster": cluster,
                                             "state": alert.get("state", "unknown"),
                                             "severity": resolve_severity(
-                                                group_labels_dict, alert_labels_dict
+                                                group_labels_dict,
+                                                alert_labels_dict,
+                                                shared_labels_dict,
                                             ),
                                             "namespace": alert_labels_dict.get(
                                                 "namespace", "N/A"
@@ -983,21 +1001,18 @@ async def search_alerts_by_container(
                 for grid in grids:
                     for group in grid.get("alertGroups", []):
                         # Get group labels (contains alertname)
-                        group_labels_dict = {}
-                        for label in group.get("labels", []):
-                            group_labels_dict[label.get("name", "")] = label.get(
-                                "value", ""
-                            )
+                        group_labels_dict = labels_list_to_dict(group.get("labels", []))
+                        shared_labels_dict = labels_list_to_dict(
+                            group.get("shared", {}).get("labels", [])
+                        )
 
                         alertname = group_labels_dict.get("alertname", "unknown")
 
                         for alert in group.get("alerts", []):
                             # Convert alert labels to dict
-                            alert_labels_dict = {}
-                            for label in alert.get("labels", []):
-                                alert_labels_dict[label.get("name", "")] = label.get(
-                                    "value", ""
-                                )
+                            alert_labels_dict = labels_list_to_dict(
+                                alert.get("labels", [])
+                            )
 
                             # Check if this alert has the container label we're looking for
                             alert_container = alert_labels_dict.get("container", "")
@@ -1036,7 +1051,9 @@ async def search_alerts_by_container(
                                             "cluster": cluster,
                                             "state": alert.get("state", "unknown"),
                                             "severity": resolve_severity(
-                                                group_labels_dict, alert_labels_dict
+                                                group_labels_dict,
+                                                alert_labels_dict,
+                                                shared_labels_dict,
                                             ),
                                             "namespace": alert_labels_dict.get(
                                                 "namespace", "N/A"

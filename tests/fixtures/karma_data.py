@@ -140,9 +140,10 @@ SAMPLE_KARMA_RESPONSE = {
     "receivers": ["web.hook"],
 }
 
-# Sample response where severity is at alert level, not group level.
-# This happens when Karma groups alerts by alertname only and severity
-# differs across instances or is not part of the grouping key.
+# Sample response where severity is in shared labels (deduplicated by Karma).
+# This is the most common real-world scenario: Karma groups by alertname,
+# and since severity is the same across all alerts in the group, Karma
+# deduplicates it into group.shared.labels.
 SAMPLE_KARMA_RESPONSE_SEVERITY_ON_ALERT = {
     "status": "success",
     "timestamp": "2025-09-04T10:00:00Z",
@@ -169,6 +170,15 @@ SAMPLE_KARMA_RESPONSE_SEVERITY_ON_ALERT = {
                     "labels": [
                         {"name": "alertname", "value": "KubePodCrashLooping"},
                     ],
+                    "shared": {
+                        "labels": [
+                            {"name": "severity", "value": "critical"},
+                        ],
+                        "annotations": [],
+                        "silences": {},
+                        "sources": [],
+                        "clusters": ["infratest-dev"],
+                    },
                     "alerts": [
                         {
                             "annotations": [
@@ -178,7 +188,6 @@ SAMPLE_KARMA_RESPONSE_SEVERITY_ON_ALERT = {
                                 },
                             ],
                             "labels": [
-                                {"name": "severity", "value": "critical"},
                                 {"name": "instance", "value": "10.55.158.226:8080"},
                                 {"name": "namespace", "value": "argocd-edge"},
                                 {"name": "pod", "value": "app-pod-789"},
