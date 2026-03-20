@@ -117,7 +117,9 @@ def labels_list_to_dict(labels: list) -> dict:
     return result
 
 
-def resolve_severity(group_labels_dict: dict, alert_labels_dict: dict, default: str = "none") -> str:
+def resolve_severity(
+    group_labels_dict: dict, alert_labels_dict: dict, default: str = "none"
+) -> str:
     """Resolve severity by checking group labels first, then alert labels.
 
     Severity can appear at either the group or alert level depending on
@@ -135,11 +137,15 @@ def extract_alert_metadata(group, alert):
     group_labels_dict = labels_list_to_dict(group_labels)
     alert_labels_dict = labels_list_to_dict(alert_labels)
 
-    alertname = group_labels_dict.get("alertname", extract_label_value(group_labels, "alertname", "Unknown"))
+    alertname = group_labels_dict.get(
+        "alertname", extract_label_value(group_labels, "alertname", "Unknown")
+    )
 
     severity = resolve_severity(group_labels_dict, alert_labels_dict)
 
-    namespace = alert_labels_dict.get("namespace", group_labels_dict.get("namespace", "N/A"))
+    namespace = alert_labels_dict.get(
+        "namespace", group_labels_dict.get("namespace", "N/A")
+    )
 
     # Extract cluster from alertmanager info
     cluster = "unknown"
