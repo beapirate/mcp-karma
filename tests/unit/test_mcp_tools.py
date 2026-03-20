@@ -104,6 +104,49 @@ class TestSeverityExtraction:
         assert metadata["namespace"] == "argocd-edge"
         assert metadata["cluster"] == "infratest-dev"
 
+    def test_extract_alert_metadata_severity_in_shared_labels(self):
+        """Test metadata extraction when severity is in shared labels (Karma dedup)"""
+        group = {
+            "labels": [
+                {"name": "alertname", "value": "KubeJobNotCompleted"},
+            ],
+            "shared": {
+                "labels": [
+                    {"name": "severity", "value": "warning"},
+                    {"name": "namespace", "value": "argocd-edge"},
+                ],
+                "annotations": [],
+                "silences": {},
+                "sources": [],
+                "clusters": ["internal-sta"],
+            },
+        }
+        alert = {
+            "labels": [
+                {"name": "instance", "value": "10.74.91.2:8080"},
+            ],
+            "state": "active",
+            "alertmanager": [{"cluster": "internal-sta", "name": "am1"}],
+        }
+        metadata = extract_alert_metadata(group, alert)
+        assert metadata["severity"] == "warning"
+        assert metadata["namespace"] == "argocd-edge"
+        assert metadata["cluster"] == "internal-sta"
+
+    def test_resolve_severity_shared_labels(self):
+        """Test resolve_severity checks shared labels"""
+        group = {"alertname": "TestAlert"}
+        alert = {"namespace": "default"}
+        shared = {"severity": "critical"}
+        assert resolve_severity(group, alert, shared) == "critical"
+
+    def test_resolve_severity_group_over_shared(self):
+        """Test group labels take precedence over shared labels"""
+        group = {"severity": "warning"}
+        alert = {}
+        shared = {"severity": "critical"}
+        assert resolve_severity(group, alert, shared) == "warning"
+
     @pytest.mark.asyncio
     async def test_list_active_alerts_severity_at_alert_level(self, env_setup):
         """Test list_active_alerts correctly shows severity from alert labels"""
