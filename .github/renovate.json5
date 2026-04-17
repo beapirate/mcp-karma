@@ -1,0 +1,24 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended"],
+  timezone: "Europe/London",
+  schedule: ["before 6am on monday"],
+  labels: ["dependencies", "chore"],
+  prConcurrentLimit: 5,
+  prHourlyLimit: 2,
+
+  // Supply-chain hardening: hold PRs until releases have been public long
+  // enough for the community to spot malicious versions (see INFRA-869).
+  internalChecksFilter: "strict",
+  prCreation: "not-pending",
+  abandonmentThreshold: "2 years",
+
+  packageRules: [
+    {
+      matchManagers: ["github-actions"],
+      commitMessagePrefix: "chore:",
+      labels: ["github_actions", "dependencies", "chore"],
+      minimumReleaseAge: "7 days",
+    },
+  ],
+}
