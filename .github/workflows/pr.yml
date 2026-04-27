@@ -23,13 +23,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: intenthq/github-actions/.github/actions/checkout@v4
         with:
           fetch-depth: 0
       
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v47
+        uses: intenthq/github-actions/.github/actions/changed-files@v4
         with:
           files: |
             src/**/*.py
