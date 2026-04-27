@@ -279,6 +279,42 @@ def filter_alerts_by_cluster(alerts_data, cluster_name):
     return filtered_data
 
 
+def filter_alerts_by_label(alerts_data, label_name, label_value):
+    """Filter alerts data to only include alerts whose group or alert labels
+    match the given label name/value (case-insensitive value comparison)."""
+    target = label_value.lower()
+    filtered_grids = []
+
+    for grid in alerts_data.get("grids", []):
+        filtered_groups = []
+
+        for group in grid.get("alertGroups", []):
+            group_labels_dict = labels_list_to_dict(group.get("labels", []))
+            group_match = group_labels_dict.get(label_name, "").lower() == target
+
+            filtered_alerts = []
+            for alert in group.get("alerts", []):
+                alert_labels_dict = labels_list_to_dict(alert.get("labels", []))
+                alert_match = alert_labels_dict.get(label_name, "").lower() == target
+                if group_match or alert_match:
+                    filtered_alerts.append(alert)
+
+            if filtered_alerts:
+                filtered_group = group.copy()
+                filtered_group["alerts"] = filtered_alerts
+                filtered_group["totalAlerts"] = len(filtered_alerts)
+                filtered_groups.append(filtered_group)
+
+        if filtered_groups:
+            filtered_grid = grid.copy()
+            filtered_grid["alertGroups"] = filtered_groups
+            filtered_grids.append(filtered_grid)
+
+    filtered_data = alerts_data.copy()
+    filtered_data["grids"] = filtered_grids
+    return filtered_data
+
+
 def extract_cluster_info(alerts_data):
     """Extract cluster information and alert counts from Karma data"""
     clusters = {}
@@ -477,6 +513,71 @@ async def list_alerts_by_cluster(cluster_name: str) -> str:
                 result += f"    Cluster: {metadata['cluster']}\n"
 
                 # Add instance if available
+                instance = extract_label_value(alert.get("labels", []), "instance")
+                if instance != "unknown":
+                    result += f"    Instance: {instance}\n"
+
+                result += "\n"
+                counter += 1
+
+    return result
+
+
+@mcp.tool()
+async def list_alerts_by_label(
+    label_name: str, label_value: str, cluster_filter: str = ""
+) -> str:
+    """List alerts whose group or alert labels match a key/value pair.
+
+    Generic label-based filter. Matches against both group labels (which
+    apply to every alert in the group) and per-alert labels. Value
+    comparison is case-insensitive. Useful for ownership labels
+    (``team``, ``owner``, ``squad``), routing labels, or any other
+    custom label your alerts carry.
+
+    Args:
+        label_name: Label key to match (e.g., 'team', 'owner', 'service').
+        label_value: Label value to match (e.g., 'platform', 'infra').
+        cluster_filter: Optional cluster name to scope the search to a
+            single cluster (e.g., 'teddy-prod'). Empty string means all
+            clusters.
+    """
+    data, error = await fetch_karma_alerts()
+    if error:
+        return error
+
+    if cluster_filter:
+        data = filter_alerts_by_cluster(data, cluster_filter)
+
+    filtered_data = filter_alerts_by_label(data, label_name, label_value)
+
+    total_alerts = 0
+    grids = filtered_data.get("grids", [])
+    for grid in grids:
+        for group in grid.get("alertGroups", []):
+            total_alerts += len(group.get("alerts", []))
+
+    scope = f" in cluster '{cluster_filter}'" if cluster_filter else ""
+
+    if total_alerts == 0:
+        return f"No alerts found for {label_name}={label_value}{scope}"
+
+    result = f"🏷️  Alerts where {label_name}='{label_value}'{scope}\n"
+    result += "=" * 50 + "\n\n"
+    result += f"Found {total_alerts} alerts:\n\n"
+
+    counter = 1
+    for grid in grids:
+        for group in grid.get("alertGroups", []):
+            for alert in group.get("alerts", []):
+                metadata = extract_alert_metadata(group, alert)
+
+                result += f"{counter:2d}. {metadata['alertname']}\n"
+                result += f"    Severity: {metadata['severity']}\n"
+                result += f"    State: {metadata['state']}\n"
+                result += f"    Namespace: {metadata['namespace']}\n"
+                result += f"    Cluster: {metadata['cluster']}\n"
+
                 instance = extract_label_value(alert.get("labels", []), "instance")
                 if instance != "unknown":
                     result += f"    Instance: {instance}\n"

@@ -28,6 +28,7 @@ from .server import (
     list_active_alerts,
     list_alerts,
     list_alerts_by_cluster,
+    list_alerts_by_label,
     list_clusters,
     list_silences,
     list_suppressed_alerts,
@@ -273,6 +274,13 @@ async def mcp_tool_endpoint(tool_name: str, params: dict[str, Any] = None):
             if not cluster_name:
                 raise ValueError("cluster_name parameter required")
             result = await list_alerts_by_cluster(cluster_name)
+        elif tool_name == "list_alerts_by_label":
+            label_name = params.get("label_name")
+            label_value = params.get("label_value")
+            if not label_name or not label_value:
+                raise ValueError("label_name and label_value parameters required")
+            cluster_filter = params.get("cluster_filter", "")
+            result = await list_alerts_by_label(label_name, label_value, cluster_filter)
         elif tool_name == "get_alert_details":
             alert_name = params.get("alert_name")
             if not alert_name:
@@ -363,6 +371,35 @@ async def mcp_jsonrpc_endpoint(request: Request):
                             }
                         },
                         "required": ["cluster_name"],
+                    },
+                },
+                {
+                    "name": "list_alerts_by_label",
+                    "description": (
+                        "Filter alerts by an arbitrary label key/value "
+                        "(e.g., team=platform, owner=infra). Optionally "
+                        "scope to a single cluster."
+                    ),
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "label_name": {
+                                "type": "string",
+                                "description": "Label key to match",
+                            },
+                            "label_value": {
+                                "type": "string",
+                                "description": "Label value to match (case-insensitive)",
+                            },
+                            "cluster_filter": {
+                                "type": "string",
+                                "description": (
+                                    "Optional cluster name to scope to. "
+                                    "Empty string means all clusters."
+                                ),
+                            },
+                        },
+                        "required": ["label_name", "label_value"],
                     },
                 },
                 {
@@ -470,6 +507,17 @@ async def mcp_jsonrpc_endpoint(request: Request):
                     if not cluster_name:
                         raise ValueError("cluster_name parameter required")
                     result = await list_alerts_by_cluster(cluster_name)
+                elif tool_name == "list_alerts_by_label":
+                    label_name = arguments.get("label_name")
+                    label_value = arguments.get("label_value")
+                    if not label_name or not label_value:
+                        raise ValueError(
+                            "label_name and label_value parameters required"
+                        )
+                    cluster_filter = arguments.get("cluster_filter", "")
+                    result = await list_alerts_by_label(
+                        label_name, label_value, cluster_filter
+                    )
                 elif tool_name == "get_alert_details":
                     alert_name = arguments.get("alert_name")
                     if not alert_name:
@@ -572,6 +620,10 @@ async def mcp_sse_stream(request: Request):
                     "name": "list_alerts_by_cluster",
                     "description": "Filter alerts by cluster",
                 },
+                {
+                    "name": "list_alerts_by_label",
+                    "description": "Filter alerts by an arbitrary label key/value",
+                },
             ]
             yield f"data: {json.dumps({'type': 'tools', 'tools': tools})}\n\n"
 
@@ -630,6 +682,16 @@ async def execute_tool_sse(request: Request):
                     status_code=400, detail="cluster_name parameter required"
                 )
             result = await list_alerts_by_cluster(cluster_name)
+        elif tool_name == "list_alerts_by_label":
+            label_name = params.get("label_name")
+            label_value = params.get("label_value")
+            if not label_name or not label_value:
+                raise HTTPException(
+                    status_code=400,
+                    detail="label_name and label_value parameters required",
+                )
+            cluster_filter = params.get("cluster_filter", "")
+            result = await list_alerts_by_label(label_name, label_value, cluster_filter)
         elif tool_name == "get_alert_details":
             alert_name = params.get("alert_name")
             if not alert_name:
