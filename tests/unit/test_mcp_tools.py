@@ -558,12 +558,15 @@ class TestFilterAlertsByLabel:
 
     def test_filter_matches_group_label(self, sample_karma_data):
         """Group-level label matches every alert in the group"""
-        # SAMPLE_KARMA_RESPONSE has severity=critical at the group level
+        # SAMPLE_KARMA_RESPONSE has exactly one group with severity=critical
+        # at the group level (KubePodCrashLooping with two alerts)
         result = filter_alerts_by_label(sample_karma_data, "severity", "critical")
         groups = [g for grid in result["grids"] for g in grid["alertGroups"]]
-        assert len(groups) >= 1
-        for group in groups:
-            assert all(group["alerts"])
+        assert len(groups) == 1
+        group_labels = labels_list_to_dict(groups[0].get("labels", []))
+        assert group_labels.get("severity") == "critical"
+        alert_ids = sorted(a["id"] for a in groups[0]["alerts"])
+        assert alert_ids == ["alert-1", "alert-2"]
 
     def test_filter_matches_alert_label(self):
         """Alert-level label matches only that specific alert"""
@@ -605,6 +608,22 @@ class TestFilterAlertsByLabel:
             SAMPLE_KARMA_RESPONSE_WITH_TEAMS, "team", "no-such-team"
         )
         assert result["grids"] == []
+
+    def test_filter_label_name_is_case_insensitive(self):
+        """Label *name* lookup must ignore case so 'Team' matches 'team'."""
+        from tests.fixtures.karma_data import SAMPLE_KARMA_RESPONSE_WITH_TEAMS
+
+        result = filter_alerts_by_label(
+            SAMPLE_KARMA_RESPONSE_WITH_TEAMS, "Team", "platform"
+        )
+        alert_ids = sorted(
+            a["id"]
+            for grid in result["grids"]
+            for g in grid["alertGroups"]
+            for a in g["alerts"]
+        )
+        # platform team has two alerts: PlatformOnEdge, PlatformOnTeddy
+        assert alert_ids == ["alert-team-5", "alert-team-6"]
 
     def test_filter_matches_shared_label(self, karma_data_severity_shared):
         """Labels deduplicated into group.shared.labels must still match.
