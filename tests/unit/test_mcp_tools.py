@@ -606,6 +606,26 @@ class TestFilterAlertsByLabel:
         )
         assert result["grids"] == []
 
+    def test_filter_matches_shared_label(self, karma_data_severity_shared):
+        """Labels deduplicated into group.shared.labels must still match.
+
+        Karma hoists labels common to every alert in a group (severity is
+        the canonical example) into group.shared.labels. Without checking
+        that location, list_alerts_by_label("severity", "critical") would
+        silently miss the most common case.
+        """
+        result = filter_alerts_by_label(
+            karma_data_severity_shared, "severity", "critical"
+        )
+        alerts = [
+            a
+            for grid in result["grids"]
+            for g in grid["alertGroups"]
+            for a in g["alerts"]
+        ]
+        assert len(alerts) == 1
+        assert alerts[0]["id"] == "alert-4"
+
 
 class TestListAlertsByLabel:
     """Test suite for list_alerts_by_label MCP tool"""
@@ -709,6 +729,25 @@ class TestListAlertsByLabel:
                 "No alerts found for team=platform in cluster 'non-existent-cluster'"
                 in result
             )
+
+    @pytest.mark.asyncio
+    async def test_matches_label_deduplicated_into_shared(
+        self, env_setup, karma_data_severity_shared
+    ):
+        """End-to-end: severity hoisted into group.shared.labels still matches."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = karma_data_severity_shared
+            mock_client.post.return_value = mock_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            result = await list_alerts_by_label_tool("severity", "critical")
+
+            assert "severity='critical'" in result
+            assert "KubePodCrashLooping" in result
+            assert "No alerts found" not in result
 
 
 class TestErrorHandling:

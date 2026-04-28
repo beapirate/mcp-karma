@@ -280,8 +280,13 @@ def filter_alerts_by_cluster(alerts_data, cluster_name):
 
 
 def filter_alerts_by_label(alerts_data, label_name, label_value):
-    """Filter alerts data to only include alerts whose group or alert labels
-    match the given label name/value (case-insensitive value comparison)."""
+    """Filter alerts data to only include alerts whose group, shared, or alert
+    labels match the given label name/value (case-insensitive value comparison).
+
+    Karma deduplicates labels common to every alert in a group into
+    ``group.shared.labels`` (severity is the canonical example), so a match
+    there counts as a match for every alert in the group.
+    """
     target = label_value.lower()
     filtered_grids = []
 
@@ -290,7 +295,13 @@ def filter_alerts_by_label(alerts_data, label_name, label_value):
 
         for group in grid.get("alertGroups", []):
             group_labels_dict = labels_list_to_dict(group.get("labels", []))
-            group_match = group_labels_dict.get(label_name, "").lower() == target
+            shared_labels_dict = labels_list_to_dict(
+                group.get("shared", {}).get("labels", [])
+            )
+            group_match = (
+                group_labels_dict.get(label_name, "").lower() == target
+                or shared_labels_dict.get(label_name, "").lower() == target
+            )
 
             filtered_alerts = []
             for alert in group.get("alerts", []):
