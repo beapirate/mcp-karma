@@ -225,6 +225,227 @@ SAMPLE_KARMA_RESPONSE_SEVERITY_ON_ALERT = {
     "receivers": ["web.hook"],
 }
 
+# Sample response with `team` ownership labels.
+# Used to exercise team-based filtering. Mixes group-level and alert-level
+# team labels and includes one alert without any team label.
+SAMPLE_KARMA_RESPONSE_WITH_TEAMS = {
+    "status": "success",
+    "timestamp": "2025-09-04T10:00:00Z",
+    "version": "v0.120",
+    "upstreams": {
+        "counters": {"healthy": 1, "failed": 0},
+        "instances": [
+            {
+                "name": "alertmanager",
+                "cluster": "teddy-prod",
+                "publicURI": "http://alertmanager.monitoring.svc.cluster.local",
+                "version": "0.25.0",
+                "error": "",
+            }
+        ],
+    },
+    "grids": [
+        {
+            "labelName": "",
+            "labelValue": "",
+            "alertGroups": [
+                {
+                    "receiver": "web.hook",
+                    "labels": [
+                        {"name": "alertname", "value": "SherlocksHighLatency"},
+                        {"name": "severity", "value": "critical"},
+                        {"name": "team", "value": "sherlocks"},
+                    ],
+                    "alerts": [
+                        {
+                            "annotations": [
+                                {"name": "summary", "value": "Latency too high"}
+                            ],
+                            "labels": [
+                                {"name": "instance", "value": "10.1.1.1:8080"},
+                                {"name": "namespace", "value": "production"},
+                            ],
+                            "startsAt": "2025-09-04T09:30:00Z",
+                            "state": "active",
+                            "alertmanager": [
+                                {
+                                    "cluster": "teddy-prod",
+                                    "name": "alertmanager",
+                                    "state": "active",
+                                }
+                            ],
+                            "receiver": "web.hook",
+                            "id": "alert-team-1",
+                        }
+                    ],
+                    "id": "group-team-1",
+                    "alertmanagerCount": {"active": 1},
+                    "stateCount": {"active": 1},
+                    "totalAlerts": 1,
+                },
+                {
+                    "receiver": "web.hook",
+                    "labels": [
+                        {"name": "alertname", "value": "PerAlertTeamLabel"},
+                    ],
+                    "alerts": [
+                        {
+                            "annotations": [],
+                            "labels": [
+                                {"name": "severity", "value": "warning"},
+                                {"name": "team", "value": "Sherlocks"},
+                                {"name": "namespace", "value": "production"},
+                                {"name": "instance", "value": "10.1.1.2:8080"},
+                            ],
+                            "startsAt": "2025-09-04T09:31:00Z",
+                            "state": "active",
+                            "alertmanager": [
+                                {
+                                    "cluster": "teddy-prod",
+                                    "name": "alertmanager",
+                                    "state": "active",
+                                }
+                            ],
+                            "receiver": "web.hook",
+                            "id": "alert-team-2",
+                        },
+                        {
+                            "annotations": [],
+                            "labels": [
+                                {"name": "severity", "value": "warning"},
+                                {"name": "team", "value": "watson"},
+                                {"name": "namespace", "value": "production"},
+                                {"name": "instance", "value": "10.1.1.3:8080"},
+                            ],
+                            "startsAt": "2025-09-04T09:32:00Z",
+                            "state": "active",
+                            "alertmanager": [
+                                {
+                                    "cluster": "teddy-prod",
+                                    "name": "alertmanager",
+                                    "state": "active",
+                                }
+                            ],
+                            "receiver": "web.hook",
+                            "id": "alert-team-3",
+                        },
+                    ],
+                    "id": "group-team-2",
+                    "alertmanagerCount": {"active": 2},
+                    "stateCount": {"active": 2},
+                    "totalAlerts": 2,
+                },
+                {
+                    "receiver": "web.hook",
+                    "labels": [
+                        {"name": "alertname", "value": "NoTeamAlert"},
+                        {"name": "severity", "value": "warning"},
+                    ],
+                    "alerts": [
+                        {
+                            "annotations": [],
+                            "labels": [
+                                {"name": "namespace", "value": "production"},
+                                {"name": "instance", "value": "10.1.1.4:8080"},
+                            ],
+                            "startsAt": "2025-09-04T09:33:00Z",
+                            "state": "active",
+                            "alertmanager": [
+                                {
+                                    "cluster": "teddy-prod",
+                                    "name": "alertmanager",
+                                    "state": "active",
+                                }
+                            ],
+                            "receiver": "web.hook",
+                            "id": "alert-team-4",
+                        }
+                    ],
+                    "id": "group-team-3",
+                    "alertmanagerCount": {"active": 1},
+                    "stateCount": {"active": 1},
+                    "totalAlerts": 1,
+                },
+                {
+                    "receiver": "web.hook",
+                    "labels": [
+                        {"name": "alertname", "value": "PlatformOnEdge"},
+                        {"name": "severity", "value": "warning"},
+                        {"name": "team", "value": "platform"},
+                    ],
+                    "alerts": [
+                        {
+                            "annotations": [],
+                            "labels": [
+                                {"name": "namespace", "value": "edge"},
+                                {"name": "instance", "value": "10.2.2.1:8080"},
+                            ],
+                            "startsAt": "2025-09-04T09:34:00Z",
+                            "state": "active",
+                            "alertmanager": [
+                                {
+                                    "cluster": "edge-prod",
+                                    "name": "alertmanager",
+                                    "state": "active",
+                                }
+                            ],
+                            "receiver": "web.hook",
+                            "id": "alert-team-5",
+                        }
+                    ],
+                    "id": "group-team-4",
+                    "alertmanagerCount": {"active": 1},
+                    "stateCount": {"active": 1},
+                    "totalAlerts": 1,
+                },
+                {
+                    "receiver": "web.hook",
+                    "labels": [
+                        {"name": "alertname", "value": "PlatformOnTeddy"},
+                        {"name": "severity", "value": "warning"},
+                        {"name": "team", "value": "platform"},
+                    ],
+                    "alerts": [
+                        {
+                            "annotations": [],
+                            "labels": [
+                                {"name": "namespace", "value": "production"},
+                                {"name": "instance", "value": "10.1.1.5:8080"},
+                            ],
+                            "startsAt": "2025-09-04T09:35:00Z",
+                            "state": "active",
+                            "alertmanager": [
+                                {
+                                    "cluster": "teddy-prod",
+                                    "name": "alertmanager",
+                                    "state": "active",
+                                }
+                            ],
+                            "receiver": "web.hook",
+                            "id": "alert-team-6",
+                        }
+                    ],
+                    "id": "group-team-5",
+                    "alertmanagerCount": {"active": 1},
+                    "stateCount": {"active": 1},
+                    "totalAlerts": 1,
+                },
+            ],
+            "totalGroups": 5,
+            "stateCount": {"active": 6},
+        }
+    ],
+    "totalAlerts": 6,
+    "labelNames": ["alertname", "severity", "team", "instance", "namespace"],
+    "colors": {},
+    "filters": [],
+    "silences": [],
+    "settings": {},
+    "authentication": {},
+    "receivers": ["web.hook"],
+}
+
+
 # Sample empty response
 EMPTY_KARMA_RESPONSE = {
     "status": "success",

@@ -10,6 +10,7 @@ import pytest
 from karma_mcp.server import (
     check_karma,
     extract_alert_metadata,
+    filter_alerts_by_label,
     get_alert_details,
     get_alert_details_multi_cluster,
     get_alerts_by_state,
@@ -22,6 +23,9 @@ from karma_mcp.server import (
     list_suppressed_alerts,
     resolve_severity,
     search_alerts_by_container,
+)
+from karma_mcp.server import (
+    list_alerts_by_label as list_alerts_by_label_tool,
 )
 
 
@@ -547,6 +551,222 @@ class TestListAlertsByCluster:
             result = await list_alerts_by_cluster("non-existent-cluster")
 
             assert "No alerts found for cluster: non-existent-cluster" in result
+
+
+class TestFilterAlertsByLabel:
+    """Test suite for filter_alerts_by_label helper"""
+
+    def test_filter_matches_group_label(self, sample_karma_data):
+        """Group-level label matches every alert in the group"""
+        # SAMPLE_KARMA_RESPONSE has exactly one group with severity=critical
+        # at the group level (KubePodCrashLooping with two alerts)
+        result = filter_alerts_by_label(sample_karma_data, "severity", "critical")
+        groups = [g for grid in result["grids"] for g in grid["alertGroups"]]
+        assert len(groups) == 1
+        group_labels = labels_list_to_dict(groups[0].get("labels", []))
+        assert group_labels.get("severity") == "critical"
+        alert_ids = sorted(a["id"] for a in groups[0]["alerts"])
+        assert alert_ids == ["alert-1", "alert-2"]
+
+    def test_filter_matches_alert_label(self):
+        """Alert-level label matches only that specific alert"""
+        from tests.fixtures.karma_data import SAMPLE_KARMA_RESPONSE_WITH_TEAMS
+
+        result = filter_alerts_by_label(
+            SAMPLE_KARMA_RESPONSE_WITH_TEAMS, "team", "watson"
+        )
+        alerts = [
+            a
+            for grid in result["grids"]
+            for g in grid["alertGroups"]
+            for a in g["alerts"]
+        ]
+        assert len(alerts) == 1
+        assert alerts[0]["id"] == "alert-team-3"
+
+    def test_filter_is_case_insensitive(self):
+        """Label value comparison ignores case"""
+        from tests.fixtures.karma_data import SAMPLE_KARMA_RESPONSE_WITH_TEAMS
+
+        result = filter_alerts_by_label(
+            SAMPLE_KARMA_RESPONSE_WITH_TEAMS, "team", "SHERLOCKS"
+        )
+        alerts = [
+            a
+            for grid in result["grids"]
+            for g in grid["alertGroups"]
+            for a in g["alerts"]
+        ]
+        # Group-level "sherlocks" + alert-level "Sherlocks"
+        assert len(alerts) == 2
+
+    def test_filter_no_match_returns_empty_grids(self):
+        """Unknown label value yields empty grids"""
+        from tests.fixtures.karma_data import SAMPLE_KARMA_RESPONSE_WITH_TEAMS
+
+        result = filter_alerts_by_label(
+            SAMPLE_KARMA_RESPONSE_WITH_TEAMS, "team", "no-such-team"
+        )
+        assert result["grids"] == []
+
+    def test_filter_label_name_is_case_insensitive(self):
+        """Label *name* lookup must ignore case so 'Team' matches 'team'."""
+        from tests.fixtures.karma_data import SAMPLE_KARMA_RESPONSE_WITH_TEAMS
+
+        result = filter_alerts_by_label(
+            SAMPLE_KARMA_RESPONSE_WITH_TEAMS, "Team", "platform"
+        )
+        alert_ids = sorted(
+            a["id"]
+            for grid in result["grids"]
+            for g in grid["alertGroups"]
+            for a in g["alerts"]
+        )
+        # platform team has two alerts: PlatformOnEdge, PlatformOnTeddy
+        assert alert_ids == ["alert-team-5", "alert-team-6"]
+
+    def test_filter_matches_shared_label(self, karma_data_severity_shared):
+        """Labels deduplicated into group.shared.labels must still match.
+
+        Karma hoists labels common to every alert in a group (severity is
+        the canonical example) into group.shared.labels. Without checking
+        that location, list_alerts_by_label("severity", "critical") would
+        silently miss the most common case.
+        """
+        result = filter_alerts_by_label(
+            karma_data_severity_shared, "severity", "critical"
+        )
+        alerts = [
+            a
+            for grid in result["grids"]
+            for g in grid["alertGroups"]
+            for a in g["alerts"]
+        ]
+        assert len(alerts) == 1
+        assert alerts[0]["id"] == "alert-4"
+
+
+class TestListAlertsByLabel:
+    """Test suite for list_alerts_by_label MCP tool"""
+
+    @pytest.mark.asyncio
+    async def test_matches_group_and_alert_labels(
+        self, env_setup, karma_data_with_teams
+    ):
+        """Label filter surfaces both group-level and alert-level matches"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = karma_data_with_teams
+            mock_client.post.return_value = mock_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            result = await list_alerts_by_label_tool("team", "sherlocks")
+
+            assert "team='sherlocks'" in result
+            assert "SherlocksHighLatency" in result
+            assert "PerAlertTeamLabel" in result
+            # Watson alert and the team-less alert must not leak in
+            assert "NoTeamAlert" not in result
+            assert "10.1.1.3:8080" not in result
+
+    @pytest.mark.asyncio
+    async def test_no_match_returns_empty_message(
+        self, env_setup, karma_data_with_teams
+    ):
+        """Unknown value yields a friendly empty message"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = karma_data_with_teams
+            mock_client.post.return_value = mock_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            result = await list_alerts_by_label_tool("team", "ghost-team")
+
+            assert "No alerts found for team=ghost-team" in result
+
+    @pytest.mark.asyncio
+    async def test_works_for_arbitrary_label_keys(
+        self, env_setup, karma_data_with_teams
+    ):
+        """Filter is generic — any label key, not just 'team'."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = karma_data_with_teams
+            mock_client.post.return_value = mock_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            # 'severity' is a regular label, no team semantics involved
+            result = await list_alerts_by_label_tool("severity", "critical")
+
+            assert "severity='critical'" in result
+            assert "SherlocksHighLatency" in result
+
+    @pytest.mark.asyncio
+    async def test_cluster_filter_scopes_to_single_cluster(
+        self, env_setup, karma_data_with_teams
+    ):
+        """cluster_filter narrows the label match to one cluster"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = karma_data_with_teams
+            mock_client.post.return_value = mock_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            result = await list_alerts_by_label_tool(
+                "team", "platform", cluster_filter="edge-prod"
+            )
+
+            assert "in cluster 'edge-prod'" in result
+            assert "PlatformOnEdge" in result
+            # Must not include the platform alert in the other cluster
+            assert "PlatformOnTeddy" not in result
+
+    @pytest.mark.asyncio
+    async def test_cluster_filter_no_match(self, env_setup, karma_data_with_teams):
+        """Empty result when label exists but not in the requested cluster"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = karma_data_with_teams
+            mock_client.post.return_value = mock_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            result = await list_alerts_by_label_tool(
+                "team", "platform", cluster_filter="non-existent-cluster"
+            )
+
+            assert (
+                "No alerts found for team=platform in cluster 'non-existent-cluster'"
+                in result
+            )
+
+    @pytest.mark.asyncio
+    async def test_matches_label_deduplicated_into_shared(
+        self, env_setup, karma_data_severity_shared
+    ):
+        """End-to-end: severity hoisted into group.shared.labels still matches."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = karma_data_severity_shared
+            mock_client.post.return_value = mock_response
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            result = await list_alerts_by_label_tool("severity", "critical")
+
+            assert "severity='critical'" in result
+            assert "KubePodCrashLooping" in result
+            assert "No alerts found" not in result
 
 
 class TestErrorHandling:

@@ -186,6 +186,7 @@ The following tools are available for Claude to use:
 | `get_alert_details` | Detailed info about specific alert | "Details about KubePodCrashLooping" |
 | `list_clusters` | List all K8s clusters with counts | "Which clusters have alerts?" |
 | `list_alerts_by_cluster` | Filter by cluster | "Show teddy-prod alerts" |
+| `list_alerts_by_label` | Filter by any label key/value (optionally scoped to a cluster) | "Show team=platform alerts in edge-prod" |
 | `list_active_alerts` | Show only active alerts | "What's currently firing?" |
 | `list_suppressed_alerts` | Show silenced/inhibited | "What alerts are suppressed?" |
 | `get_alerts_by_state` | Filter by state (active/suppressed/all) | "Show all suppressed alerts" |

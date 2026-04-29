@@ -14,6 +14,8 @@ from tests.fixtures.karma_data import (  # noqa: E402
     EMPTY_KARMA_RESPONSE,
     HEALTH_RESPONSE,
     SAMPLE_KARMA_RESPONSE,
+    SAMPLE_KARMA_RESPONSE_SEVERITY_ON_ALERT,
+    SAMPLE_KARMA_RESPONSE_WITH_TEAMS,
 )
 
 # Add src directory to Python path
@@ -48,6 +50,18 @@ def env_setup(karma_url):
 def sample_karma_data():
     """Sample Karma API response data"""
     return SAMPLE_KARMA_RESPONSE
+
+
+@pytest.fixture
+def karma_data_with_teams():
+    """Karma response containing alerts with `team` ownership labels."""
+    return SAMPLE_KARMA_RESPONSE_WITH_TEAMS
+
+
+@pytest.fixture
+def karma_data_severity_shared():
+    """Karma response where severity is deduplicated into group.shared.labels."""
+    return SAMPLE_KARMA_RESPONSE_SEVERITY_ON_ALERT
 
 
 @pytest.fixture

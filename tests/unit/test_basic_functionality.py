@@ -104,6 +104,7 @@ class TestMCPProtocolBasics:
             "get_alerts_summary",
             "list_clusters",
             "list_alerts_by_cluster",
+            "list_alerts_by_label",
             "get_alert_details",
             "get_alert_details_multi_cluster",
             "list_active_alerts",
