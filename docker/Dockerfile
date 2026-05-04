@@ -1,6 +1,6 @@
 # Multi-stage Docker build for Karma MCP Server
 # Stage 1: Build environment
-FROM python:3.12-slim as builder
+FROM python:3.14-slim as builder
 
 # Install uv for fast dependency management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
@@ -15,7 +15,7 @@ COPY pyproject.toml ./
 RUN uv sync --no-dev --no-install-project
 
 # Stage 2: Runtime environment
-FROM python:3.12-slim as runtime
+FROM python:3.14-slim as runtime
 
 # Create non-root user for security
 RUN groupadd -r karma && useradd -r -g karma karma
