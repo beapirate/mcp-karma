@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.1](https://github.com/intenthq/mcp-karma/compare/v0.10.0...v0.10.1) (2026-05-05)
+
+
+### Miscellaneous Chores
+
+* **deps:** update python docker tag to v3.14 ([#26](https://github.com/intenthq/mcp-karma/issues/26)) ([b39ccd6](https://github.com/intenthq/mcp-karma/commit/b39ccd61e07256ffa20bd59c2f594bc62fca63d4))
+* drop component prefix from release-please tags ([#23](https://github.com/intenthq/mcp-karma/issues/23)) ([57ef5ee](https://github.com/intenthq/mcp-karma/commit/57ef5ee0148257e7f407754c05f8f5d657e17b70))
+* pin actions to SHAs and surface chore/deps in releases ([#27](https://github.com/intenthq/mcp-karma/issues/27)) ([5bf40b2](https://github.com/intenthq/mcp-karma/commit/5bf40b2bcfbf5992241e8a4cfcc6812854ff261b))
+* Update astral-sh/setup-uv action to v8 ([#24](https://github.com/intenthq/mcp-karma/issues/24)) ([832b70d](https://github.com/intenthq/mcp-karma/commit/832b70dfef815b8f1d10809b657a48a522b0e00b))
+* Update googleapis/release-please-action action to v5 ([#25](https://github.com/intenthq/mcp-karma/issues/25)) ([ed837e2](https://github.com/intenthq/mcp-karma/commit/ed837e2bd2da47c66d1940beec477f6745219a6e))
+* Update tj-actions/changed-files action to v47.0.6 ([#28](https://github.com/intenthq/mcp-karma/issues/28)) ([749c16b](https://github.com/intenthq/mcp-karma/commit/749c16bcf21de45fe096d621c364293fb5261786))
+
 ## [0.10.0](https://github.com/intenthq/mcp-karma/compare/karma-mcp-v0.9.3...karma-mcp-v0.10.0) (2026-04-29)
 
 
