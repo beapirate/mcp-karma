@@ -14,9 +14,19 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
+      # Mint a GitHub App installation token so tags and releases created by
+      # release-please trigger downstream workflows (deploy.yml). Events from
+      # the default GITHUB_TOKEN do not propagate.
+      - id: app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ vars.MCP_KARMA_RELEASE_CLIENT_ID }}
+          private-key: ${{ secrets.MCP_KARMA_RELEASE_KEY }}
+
       - id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
+          token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
