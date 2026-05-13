@@ -5,6 +5,7 @@ Simple MCP server for Karma Alerts using FastMCP
 
 import logging
 import os
+from contextlib import asynccontextmanager
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -65,16 +66,37 @@ logger.info(f"🌐 Karma URL configured: {KARMA_URL}")
 logger.info("📚 Added alert analysis prompts for enhanced AI assistance")
 
 
-# Utility functions to reduce code duplication
-async def create_karma_client():
-    """Create and configure HTTP client for Karma API calls"""
-    return httpx.AsyncClient()
+# Shared httpx.AsyncClient owned by the FastAPI lifespan in http_server.py.
+# When set, all tool calls reuse it (one connection pool, no per-call SSL
+# context / pool churn). When not set — e.g. stdio mode, tests with
+# unmocked tool calls — each call falls back to a short-lived client.
+_karma_client: httpx.AsyncClient | None = None
+
+
+def set_karma_client(client: httpx.AsyncClient | None) -> None:
+    """Install (or clear) the shared client used by tool calls."""
+    global _karma_client
+    _karma_client = client
+
+
+@asynccontextmanager
+async def karma_client():
+    """Yield an httpx.AsyncClient for a single tool call.
+
+    Reuses the shared client installed by the app lifespan when available;
+    otherwise opens and closes a fresh client.
+    """
+    if _karma_client is not None and not _karma_client.is_closed:
+        yield _karma_client
+    else:
+        async with httpx.AsyncClient() as client:
+            yield client
 
 
 async def fetch_karma_alerts():
     """Fetch alerts data from Karma API with common error handling"""
     try:
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
@@ -383,7 +405,7 @@ def extract_annotations(alert):
 async def check_karma() -> str:
     """Check connection to Karma server"""
     try:
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.get(f"{KARMA_URL}/health")
             if response.status_code == 200:
                 return f"✓ Karma is running at {KARMA_URL}"
@@ -674,7 +696,7 @@ async def get_alert_details(alert_name: str) -> str:
 async def list_active_alerts() -> str:
     """List only active (non-suppressed) alerts"""
     try:
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
@@ -767,7 +789,7 @@ async def list_active_alerts() -> str:
 async def list_suppressed_alerts() -> str:
     """List only suppressed alerts"""
     try:
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
@@ -883,7 +905,7 @@ async def get_alert_details_multi_cluster(
         cluster_filter: Optional cluster name filter. If empty, searches all clusters.
     """
     try:
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
@@ -1105,7 +1127,7 @@ async def search_alerts_by_container(
         cluster_filter: Optional cluster name filter (e.g., 'teddy-prod', 'edge-prod'). If empty, searches all clusters.
     """
     try:
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
@@ -1296,7 +1318,7 @@ async def list_silences(cluster: str = "") -> str:
         Formatted list of active silences with details
     """
     try:
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 json={},
@@ -1391,7 +1413,7 @@ async def create_silence(
     """
     try:
         # First, get the Alertmanager URL for this cluster
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 json={},
@@ -1510,7 +1532,7 @@ async def delete_silence(silence_id: str, cluster: str) -> str:
     """
     try:
         # First verify the silence exists
-        async with httpx.AsyncClient() as client:
+        async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 json={},

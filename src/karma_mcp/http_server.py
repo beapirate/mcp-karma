@@ -8,8 +8,10 @@ import asyncio
 import json
 import logging
 import os
+from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,16 +35,29 @@ from .server import (
     list_silences,
     list_suppressed_alerts,
     search_alerts_by_container,
+    set_karma_client,
 )
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with httpx.AsyncClient() as client:
+        set_karma_client(client)
+        try:
+            yield
+        finally:
+            set_karma_client(None)
+
 
 # FastAPI app
 app = FastAPI(
     title="Karma MCP HTTP Server",
     description="HTTP wrapper for Karma MCP tools with SSE support",
     version="0.4.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware for browser access

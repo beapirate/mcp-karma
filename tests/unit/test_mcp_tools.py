@@ -156,7 +156,7 @@ class TestSeverityExtraction:
         """Test list_active_alerts correctly shows severity from alert labels"""
         from tests.fixtures.karma_data import SAMPLE_KARMA_RESPONSE_SEVERITY_ON_ALERT
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -177,7 +177,7 @@ class TestSeverityExtraction:
         """Test list_alerts_by_cluster correctly shows severity from alert labels"""
         from tests.fixtures.karma_data import SAMPLE_KARMA_RESPONSE_SEVERITY_ON_ALERT
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -198,7 +198,7 @@ class TestCheckKarma:
     @pytest.mark.asyncio
     async def test_check_karma_success(self, env_setup, health_response):
         """Test successful karma health check"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -214,7 +214,7 @@ class TestCheckKarma:
     @pytest.mark.asyncio
     async def test_check_karma_http_error(self, env_setup):
         """Test karma health check with HTTP error"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 500
@@ -228,7 +228,7 @@ class TestCheckKarma:
     @pytest.mark.asyncio
     async def test_check_karma_connection_error(self, env_setup):
         """Test karma health check with connection error"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get.side_effect = Exception("Connection refused")
             mock_client_class.return_value.__aenter__.return_value = mock_client
@@ -245,7 +245,7 @@ class TestListAlerts:
     @pytest.mark.asyncio
     async def test_list_alerts_success(self, env_setup, sample_karma_data):
         """Test successful alert listing"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -263,7 +263,7 @@ class TestListAlerts:
     @pytest.mark.asyncio
     async def test_list_alerts_empty_response(self, env_setup, empty_karma_data):
         """Test alert listing with empty response"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -278,7 +278,7 @@ class TestListAlerts:
     @pytest.mark.asyncio
     async def test_list_alerts_http_error(self, env_setup):
         """Test alert listing with HTTP error"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 500
@@ -296,7 +296,7 @@ class TestGetAlertsSummary:
     @pytest.mark.asyncio
     async def test_get_alerts_summary_success(self, env_setup, sample_karma_data):
         """Test successful alerts summary"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -318,7 +318,7 @@ class TestStateFiltering:
     @pytest.mark.asyncio
     async def test_list_active_alerts(self, env_setup, sample_karma_data):
         """Test listing only active alerts"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -336,7 +336,7 @@ class TestStateFiltering:
     @pytest.mark.asyncio
     async def test_list_suppressed_alerts(self, env_setup, sample_karma_data):
         """Test listing only suppressed alerts"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -363,7 +363,7 @@ class TestStateFiltering:
         self, state, expected_function, env_setup, sample_karma_data
     ):
         """Test get_alerts_by_state with valid states"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -411,7 +411,7 @@ class TestStateFiltering:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -445,7 +445,7 @@ class TestStateFiltering:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -464,7 +464,7 @@ class TestGetAlertDetails:
     @pytest.mark.asyncio
     async def test_get_alert_details_success(self, env_setup, sample_karma_data):
         """Test successful alert details retrieval"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -483,7 +483,7 @@ class TestGetAlertDetails:
     @pytest.mark.asyncio
     async def test_get_alert_details_not_found(self, env_setup, sample_karma_data):
         """Test alert details for non-existent alert"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -502,7 +502,7 @@ class TestListClusters:
     @pytest.mark.asyncio
     async def test_list_clusters_success(self, env_setup, sample_karma_data):
         """Test successful cluster listing"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -523,7 +523,7 @@ class TestListAlertsByCluster:
     @pytest.mark.asyncio
     async def test_list_alerts_by_cluster_success(self, env_setup, sample_karma_data):
         """Test successful alert filtering by cluster"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -540,7 +540,7 @@ class TestListAlertsByCluster:
     @pytest.mark.asyncio
     async def test_list_alerts_by_cluster_not_found(self, env_setup, sample_karma_data):
         """Test alert filtering by non-existent cluster"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -654,7 +654,7 @@ class TestListAlertsByLabel:
         self, env_setup, karma_data_with_teams
     ):
         """Label filter surfaces both group-level and alert-level matches"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -676,7 +676,7 @@ class TestListAlertsByLabel:
         self, env_setup, karma_data_with_teams
     ):
         """Unknown value yields a friendly empty message"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -693,7 +693,7 @@ class TestListAlertsByLabel:
         self, env_setup, karma_data_with_teams
     ):
         """Filter is generic — any label key, not just 'team'."""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -712,7 +712,7 @@ class TestListAlertsByLabel:
         self, env_setup, karma_data_with_teams
     ):
         """cluster_filter narrows the label match to one cluster"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -732,7 +732,7 @@ class TestListAlertsByLabel:
     @pytest.mark.asyncio
     async def test_cluster_filter_no_match(self, env_setup, karma_data_with_teams):
         """Empty result when label exists but not in the requested cluster"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -754,7 +754,7 @@ class TestListAlertsByLabel:
         self, env_setup, karma_data_severity_shared
     ):
         """End-to-end: severity hoisted into group.shared.labels still matches."""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -775,7 +775,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_connection_timeout(self, env_setup):
         """Test behavior when connection times out"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.post.side_effect = httpx.TimeoutException("Request timeout")
             mock_client_class.return_value.__aenter__.return_value = mock_client
@@ -788,7 +788,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_invalid_json_response(self, env_setup):
         """Test behavior when Karma returns invalid JSON"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -856,7 +856,7 @@ class TestSearchAlertsByContainer:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -913,7 +913,7 @@ class TestSearchAlertsByContainer:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -934,7 +934,7 @@ class TestSearchAlertsByContainer:
         """Test container search when no matching containers found"""
         empty_data = {"grids": [{"alertGroups": []}]}
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -973,7 +973,7 @@ class TestSearchAlertsByContainer:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -991,7 +991,7 @@ class TestSearchAlertsByContainer:
     @pytest.mark.asyncio
     async def test_search_container_http_error(self, env_setup):
         """Test container search with HTTP error"""
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 500
@@ -1032,7 +1032,7 @@ class TestSearchAlertsByContainer:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -1120,7 +1120,7 @@ class TestGetAlertDetailsMultiCluster:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -1175,7 +1175,7 @@ class TestGetAlertDetailsMultiCluster:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -1197,7 +1197,7 @@ class TestGetAlertDetailsMultiCluster:
         """Test multi-cluster alert details when alert not found"""
         empty_data = {"grids": [{"alertGroups": []}]}
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -1236,7 +1236,7 @@ class TestGetAlertDetailsMultiCluster:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -1290,7 +1290,7 @@ class TestGetAlertDetailsMultiCluster:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("karma_mcp.server.karma_client") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
