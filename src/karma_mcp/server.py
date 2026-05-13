@@ -93,14 +93,25 @@ async def karma_client():
             yield client
 
 
-async def fetch_karma_alerts():
-    """Fetch alerts data from Karma API with common error handling"""
+DEFAULT_GROUP_LIMIT = 50
+
+
+async def fetch_karma_alerts(group_limit: int = DEFAULT_GROUP_LIMIT):
+    """Fetch alerts data from Karma API with common error handling.
+
+    Args:
+        group_limit: Maximum alerts to return per alert group. Karma's own
+            server-side default is 5, which silently truncates groups that
+            have more alerts than that. Bumped to 50 here so tool callers
+            see the full picture by default; bump higher when listing
+            alerts in noisy clusters.
+    """
     try:
         async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
-                json={},
+                json={"defaultGroupLimit": group_limit},
             )
 
             if response.status_code != 200:
@@ -416,9 +427,15 @@ async def check_karma() -> str:
 
 
 @mcp.tool()
-async def list_alerts() -> str:
-    """List all active alerts in Karma"""
-    data, error = await fetch_karma_alerts()
+async def list_alerts(group_limit: int = DEFAULT_GROUP_LIMIT) -> str:
+    """List all active alerts in Karma.
+
+    Args:
+        group_limit: Maximum alerts to return per alert group. Bump
+            this when a group has more than 50 alerts and the listing
+            is being truncated.
+    """
+    data, error = await fetch_karma_alerts(group_limit=group_limit)
     if error:
         return error
 
@@ -448,9 +465,14 @@ async def list_alerts() -> str:
 
 
 @mcp.tool()
-async def get_alerts_summary() -> str:
-    """Get a summary of alerts grouped by severity and state"""
-    data, error = await fetch_karma_alerts()
+async def get_alerts_summary(group_limit: int = DEFAULT_GROUP_LIMIT) -> str:
+    """Get a summary of alerts grouped by severity and state.
+
+    Args:
+        group_limit: Maximum alerts to return per alert group when
+            fetching from Karma. Affects the counts in the summary.
+    """
+    data, error = await fetch_karma_alerts(group_limit=group_limit)
     if error:
         return error
 
@@ -483,9 +505,16 @@ async def get_alerts_summary() -> str:
 
 
 @mcp.tool()
-async def list_clusters() -> str:
-    """List all available Kubernetes clusters in Karma"""
-    data, error = await fetch_karma_alerts()
+async def list_clusters(group_limit: int = DEFAULT_GROUP_LIMIT) -> str:
+    """List all available Kubernetes clusters in Karma.
+
+    Args:
+        group_limit: Maximum alerts to return per alert group when
+            scanning for cluster names. Clusters only known via
+            alerts beyond the limit will be missed; bump if a
+            cluster you expect is missing from the output.
+    """
+    data, error = await fetch_karma_alerts(group_limit=group_limit)
     if error:
         return error
 
@@ -514,13 +543,18 @@ async def list_clusters() -> str:
 
 
 @mcp.tool()
-async def list_alerts_by_cluster(cluster_name: str) -> str:
+async def list_alerts_by_cluster(
+    cluster_name: str, group_limit: int = DEFAULT_GROUP_LIMIT
+) -> str:
     """List alerts filtered by specific cluster
 
     Args:
         cluster_name: Name of the cluster to filter by (e.g., 'teddy-prod', 'edge-prod')
+        group_limit: Maximum alerts to return per alert group. Bump
+            when a group has more than 50 alerts in the cluster and
+            the listing is being truncated.
     """
-    data, error = await fetch_karma_alerts()
+    data, error = await fetch_karma_alerts(group_limit=group_limit)
     if error:
         return error
 
@@ -567,7 +601,10 @@ async def list_alerts_by_cluster(cluster_name: str) -> str:
 
 @mcp.tool()
 async def list_alerts_by_label(
-    label_name: str, label_value: str, cluster_filter: str = ""
+    label_name: str,
+    label_value: str,
+    cluster_filter: str = "",
+    group_limit: int = DEFAULT_GROUP_LIMIT,
 ) -> str:
     """List alerts whose group or alert labels match a key/value pair.
 
@@ -583,8 +620,11 @@ async def list_alerts_by_label(
         cluster_filter: Optional cluster name to scope the search to a
             single cluster (e.g., 'teddy-prod'). Empty string means all
             clusters.
+        group_limit: Maximum alerts to return per alert group. Bump
+            when a matching group has more than 50 alerts and the
+            listing is being truncated.
     """
-    data, error = await fetch_karma_alerts()
+    data, error = await fetch_karma_alerts(group_limit=group_limit)
     if error:
         return error
 
@@ -631,13 +671,18 @@ async def list_alerts_by_label(
 
 
 @mcp.tool()
-async def get_alert_details(alert_name: str) -> str:
+async def get_alert_details(
+    alert_name: str, group_limit: int = DEFAULT_GROUP_LIMIT
+) -> str:
     """Get detailed information about a specific alert
 
     Args:
         alert_name: Name of the alert to get details for
+        group_limit: Maximum alerts to return per alert group. Bump
+            when the alert has more than 50 instances and the
+            listing is being truncated.
     """
-    data, error = await fetch_karma_alerts()
+    data, error = await fetch_karma_alerts(group_limit=group_limit)
     if error:
         return error
 
@@ -693,14 +738,20 @@ async def get_alert_details(alert_name: str) -> str:
 
 
 @mcp.tool()
-async def list_active_alerts() -> str:
-    """List only active (non-suppressed) alerts"""
+async def list_active_alerts(group_limit: int = DEFAULT_GROUP_LIMIT) -> str:
+    """List only active (non-suppressed) alerts.
+
+    Args:
+        group_limit: Maximum alerts to return per alert group. Bump
+            when a group has more than 50 active alerts and the
+            listing is being truncated.
+    """
     try:
         async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
-                json={},
+                json={"defaultGroupLimit": group_limit},
             )
 
             if response.status_code == 200:
@@ -786,14 +837,20 @@ async def list_active_alerts() -> str:
 
 
 @mcp.tool()
-async def list_suppressed_alerts() -> str:
-    """List only suppressed alerts"""
+async def list_suppressed_alerts(group_limit: int = DEFAULT_GROUP_LIMIT) -> str:
+    """List only suppressed alerts.
+
+    Args:
+        group_limit: Maximum alerts to return per alert group. Bump
+            when a group has more than 50 suppressed alerts and the
+            listing is being truncated.
+    """
     try:
         async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
-                json={},
+                json={"defaultGroupLimit": group_limit},
             )
 
             if response.status_code == 200:
@@ -879,37 +936,51 @@ async def list_suppressed_alerts() -> str:
 
 
 @mcp.tool()
-async def get_alerts_by_state(state: str) -> str:
-    """Get alerts filtered by state (active, suppressed, or all)"""
+async def get_alerts_by_state(
+    state: str, group_limit: int = DEFAULT_GROUP_LIMIT
+) -> str:
+    """Get alerts filtered by state (active, suppressed, or all).
+
+    Args:
+        state: One of "active", "suppressed", or "all".
+        group_limit: Maximum alerts to return per alert group. Bump
+            when a group has more than 50 alerts and the listing is
+            being truncated.
+    """
     valid_states = ["active", "suppressed", "all"]
 
     if state.lower() not in valid_states:
         return f"Invalid state '{state}'. Valid options: {', '.join(valid_states)}"
 
     if state.lower() == "active":
-        return await list_active_alerts()
+        return await list_active_alerts(group_limit=group_limit)
     elif state.lower() == "suppressed":
-        return await list_suppressed_alerts()
+        return await list_suppressed_alerts(group_limit=group_limit)
     else:  # all
-        return await list_alerts()
+        return await list_alerts(group_limit=group_limit)
 
 
 @mcp.tool()
 async def get_alert_details_multi_cluster(
-    alert_name: str, cluster_filter: str = ""
+    alert_name: str,
+    cluster_filter: str = "",
+    group_limit: int = DEFAULT_GROUP_LIMIT,
 ) -> str:
     """Get detailed information about a specific alert across multiple clusters
 
     Args:
         alert_name: Name of the alert to search for (e.g., 'KubePodCrashLooping')
         cluster_filter: Optional cluster name filter. If empty, searches all clusters.
+        group_limit: Maximum alerts to return per alert group. Bump
+            when the alert has more than 50 instances per cluster
+            and the listing is being truncated.
     """
     try:
         async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
-                json={},
+                json={"defaultGroupLimit": group_limit},
             )
 
             if response.status_code == 200:
@@ -1118,20 +1189,25 @@ async def get_alert_details_multi_cluster(
 
 @mcp.tool()
 async def search_alerts_by_container(
-    container_name: str, cluster_filter: str = ""
+    container_name: str,
+    cluster_filter: str = "",
+    group_limit: int = DEFAULT_GROUP_LIMIT,
 ) -> str:
     """Search for alerts by container name across multiple clusters
 
     Args:
         container_name: Name of the container to search for
         cluster_filter: Optional cluster name filter (e.g., 'teddy-prod', 'edge-prod'). If empty, searches all clusters.
+        group_limit: Maximum alerts to return per alert group when
+            scanning. Bump when a matching group has more than 50
+            alerts and matches are being missed.
     """
     try:
         async with karma_client() as client:
             response = await client.post(
                 f"{KARMA_URL}/alerts.json",
                 headers={"Content-Type": "application/json"},
-                json={},
+                json={"defaultGroupLimit": group_limit},
             )
 
             if response.status_code == 200:
