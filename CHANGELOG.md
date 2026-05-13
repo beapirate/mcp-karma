@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.2](https://github.com/intenthq/mcp-karma/compare/v0.10.1...v0.10.2) (2026-05-13)
+
+
+### Bug Fixes
+
+* reuse a single httpx.AsyncClient for tool calls ([#31](https://github.com/intenthq/mcp-karma/issues/31)) ([1501835](https://github.com/intenthq/mcp-karma/commit/1501835d66130e6dbc41b4bec53ef0e8bf9ad552))
+* use GitHub App token for release-please so deploys trigger ([#30](https://github.com/intenthq/mcp-karma/issues/30)) ([ff5c9ef](https://github.com/intenthq/mcp-karma/commit/ff5c9ef9305f7c31cfd571bbca2404fc25c5a93f))
+
 ## [0.10.1](https://github.com/intenthq/mcp-karma/compare/v0.10.0...v0.10.1) (2026-05-05)
 
 
