@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/intenthq/mcp-karma/compare/v0.10.2...v0.11.0) (2026-05-13)
+
+
+### Features
+
+* make karma's defaultGroupLimit configurable per tool call ([#33](https://github.com/intenthq/mcp-karma/issues/33)) ([8e76e24](https://github.com/intenthq/mcp-karma/commit/8e76e24225f81cfeb680228d94ae13035611fd5f))
+
 ## [0.10.2](https://github.com/intenthq/mcp-karma/compare/v0.10.1...v0.10.2) (2026-05-13)
 
 

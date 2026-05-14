@@ -1,6 +1,6 @@
 [project]
 name = "karma-mcp"
-version = "0.10.2"
+version = "0.11.0"
 description = "MCP server for Karma Alert Dashboard integration with Claude"
 authors = [
     {name = "Karma MCP Contributors"}
