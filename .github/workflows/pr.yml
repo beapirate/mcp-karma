@@ -10,22 +10,29 @@ on:
         required: false
         type: string
 
+permissions: {}
+
 jobs:
   # Run full CI pipeline
   pr-ci-check:
     name: PR CI Validation
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
     
   # PR-specific analysis
   pr-change-analysis:
     name: PR Change Analysis
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
       
       - name: Get changed files
         id: changed-files
@@ -41,6 +48,9 @@ jobs:
       
       - name: Generate PR Summary
         if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           echo "## 📋 Pull Request Analysis" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -49,10 +59,10 @@ jobs:
           echo "### 📊 Change Statistics" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          PYTHON_FILES=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -c "\.py$" || true)
-          TEST_FILES=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -c "tests/" || true)
-          CONFIG_FILES=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -cE "\.(yml|yaml|toml)$" || true)
-          DOCKER_FILES=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -c "docker/" || true)
+          PYTHON_FILES=$(echo "$ALL_CHANGED_FILES" | tr ' ' '\n' | grep -c "\.py$" || true)
+          TEST_FILES=$(echo "$ALL_CHANGED_FILES" | tr ' ' '\n' | grep -c "tests/" || true)
+          CONFIG_FILES=$(echo "$ALL_CHANGED_FILES" | tr ' ' '\n' | grep -cE "\.(yml|yaml|toml)$" || true)
+          DOCKER_FILES=$(echo "$ALL_CHANGED_FILES" | tr ' ' '\n' | grep -c "docker/" || true)
           
           echo "- **Python files changed:** $PYTHON_FILES" >> $GITHUB_STEP_SUMMARY
           echo "- **Test files changed:** $TEST_FILES" >> $GITHUB_STEP_SUMMARY
@@ -67,7 +77,7 @@ jobs:
           echo "<summary>Click to expand file list</summary>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | sort >> $GITHUB_STEP_SUMMARY
+          echo "$ALL_CHANGED_FILES" | tr ' ' '\n' | sort >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "</details>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -80,7 +90,7 @@ jobs:
             echo "<summary>New/modified functions and classes</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`python" >> $GITHUB_STEP_SUMMARY
-            git diff origin/${{ github.base_ref }}...HEAD --unified=0 | grep -E "^\+\s*(def |class )" | sed 's/^+//' | head -20 >> $GITHUB_STEP_SUMMARY || true
+            git diff "origin/$BASE_REF...HEAD" --unified=0 | grep -E "^\+\s*(def |class )" | sed 's/^+//' | head -20 >> $GITHUB_STEP_SUMMARY || true
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
             echo "</details>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -89,8 +99,8 @@ jobs:
           # Size of changes
           echo "### 📏 Change Size" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          ADDITIONS=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$1} END {print sum}')
-          DELETIONS=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$2} END {print sum}')
+          ADDITIONS=$(git diff --numstat "origin/$BASE_REF...HEAD" | awk '{sum+=$1} END {print sum}')
+          DELETIONS=$(git diff --numstat "origin/$BASE_REF...HEAD" | awk '{sum+=$2} END {print sum}')
           echo "- **Lines added:** +$ADDITIONS" >> $GITHUB_STEP_SUMMARY
           echo "- **Lines removed:** -$DELETIONS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -126,14 +136,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: [pr-ci-check, pr-change-analysis]
     if: always()
-    
+    permissions:
+      contents: read
+
     steps:
       - name: PR Status Summary
+        env:
+          CI_RESULT: ${{ needs.pr-ci-check.result }}
         run: |
           echo "## ✅ Pull Request Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [[ "${{ needs.pr-ci-check.result }}" == "success" ]]; then
+
+          if [[ "$CI_RESULT" == "success" ]]; then
             echo "### 🎉 All checks passed!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "This PR is ready for review." >> $GITHUB_STEP_SUMMARY
@@ -142,8 +156,8 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Please fix the issues before merging." >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           # Exit with failure if CI failed
-          if [[ "${{ needs.pr-ci-check.result }}" != "success" ]]; then
+          if [[ "$CI_RESULT" != "success" ]]; then
             exit 1
           fi
