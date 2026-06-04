@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/intenthq/mcp-karma/compare/v0.11.0...v0.11.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* resolve zizmor template-injection, excessive-permissions, artipacked (INFRA-869) ([#35](https://github.com/intenthq/mcp-karma/issues/35)) ([85b9ae4](https://github.com/intenthq/mcp-karma/commit/85b9ae402d267fd4e215045cd7a4721820ef8ee8))
+
 ## [0.11.0](https://github.com/intenthq/mcp-karma/compare/v0.10.2...v0.11.0) (2026-05-13)
 
 
