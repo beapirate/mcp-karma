@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple MCP server for Karma Alerts using FastMCP
+Simple MCP server for Karma Alerts using MCPServer
 """
 
 import logging
@@ -8,7 +8,7 @@ import os
 from contextlib import asynccontextmanager
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from .prompts import (
     ALERT_ANALYSIS_PROMPT,
@@ -31,8 +31,8 @@ except ImportError:
 # Configuration from environment variables
 KARMA_URL = os.getenv("KARMA_URL", "http://localhost:8080")
 
-# Create FastMCP server
-mcp = FastMCP("karma-mcp")
+# Create MCPServer instance
+mcp = MCPServer("karma-mcp")
 
 
 # Add prompt resources to help Claude analyze alerts effectively
